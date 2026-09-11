@@ -1,0 +1,33 @@
+[package]
+name = "resonate-sdk-taquba"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Embedded network for the Resonate Rust SDK: durable execution on an object store via taquba"
+# Unpublished for now.
+publish = false
+
+[features]
+# The taquba object store backends, forwarded. No backend is enabled by
+# default: the in-memory and local-disk stores work without one.
+aws = ["taquba/aws"]
+gcp = ["taquba/gcp"]
+azure = ["taquba/azure"]
+
+[dependencies]
+resonate-sdk = { git = "https://github.com/resonatehq/resonate-sdk-rs", rev = "6545265" }
+taquba = { git = "https://github.com/micllam/taquba", branch = "master" }
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+tokio-util = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+tracing = "0.1"
+thiserror = "2"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+chrono = { version = "0.4", default-features = false }
+croner = "2"
+url = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }

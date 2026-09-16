@@ -2536,8 +2536,9 @@ dependencies = [
 
 [[package]]
 name = "taquba"
-version = "0.12.0"
-source = "git+https://github.com/micllam/taquba?branch=master#c93848fd78ea3de2f0d9ea31f6f7b230a881fb9c"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c277a7735e0cb57ac12f2c76abf9584ddba5945c07fb56a2fad8b0765f1b7460"
 dependencies = [
  "bytes",
  "futures-util",

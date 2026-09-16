@@ -16,7 +16,7 @@ azure = ["taquba/azure"]
 
 [dependencies]
 resonate-sdk = { git = "https://github.com/resonatehq/resonate-sdk-rs", rev = "6545265" }
-taquba = { git = "https://github.com/micllam/taquba", branch = "master" }
+taquba = "0.13"
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7"
 serde = { version = "1", features = ["derive"] }

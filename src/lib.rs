@@ -63,9 +63,10 @@
 //! ## Time and storage
 //!
 //! Every time is read from the queue's clock, so a store opened with a
-//! `MockClock` runs the protocol under controlled time. Records are entries
-//! in the queue's user KV namespace with a `resonate/` prefix, so the
-//! namespace can be shared with the application's own entries.
+//! `MockClock` runs the protocol under controlled time. Records are entries in
+//! the queue's user KV namespace with a `resonate/` prefix, and the store's
+//! queues have names with a `resonate.` prefix. Every other key and queue name
+//! is free for the application.
 //!
 //! # Limits
 //!

@@ -134,10 +134,10 @@ impl TaqubaStore {
         Ok(Self::from_queue(Arc::new(queue), options))
     }
 
-    /// Run the store on a queue the application opened. The address
-    /// queues and the timer queue are named with an address or a
-    /// `resonate/` prefix and take the queue's default configuration,
-    /// which must not retain done jobs and must not bound attempts.
+    /// Run the store on a queue the application opened. The address queues and
+    /// the timer queue have names with a `resonate.` prefix and take the
+    /// queue's default configuration, which must not retain done jobs and must
+    /// not bound attempts.
     pub fn from_queue(queue: Arc<Queue>, options: StoreOptions) -> Self {
         let shared = Arc::new(Shared {
             queue,

@@ -16,7 +16,7 @@ azure = ["taquba/azure"]
 
 [dependencies]
 resonate-sdk = { git = "https://github.com/resonatehq/resonate-sdk-rs", rev = "6545265" }
-taquba = "0.13"
+taquba = "0.16"
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7"
 serde = { version = "1", features = ["derive"] }
@@ -28,6 +28,7 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 chrono = { version = "0.4", default-features = false }
 croner = "2"
 url = "2"
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }

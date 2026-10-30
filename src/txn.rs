@@ -12,14 +12,14 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use taquba::{
-    Claim, ClaimOutcome, EnqueueOptions, EnqueueRequest, Error as QueueError, Queue,
+    Claim, ClaimOutcome, EnqueueOptions, EnqueueRequest, Error as QueueError, KvOrder, Queue,
     SettlementEffects,
 };
 
 use crate::error::Result;
 use crate::keys::{
-    PROMISE_PREFIX, SCHEDULE_PREFIX, TASK_PREFIX, TIMER_QUEUE, branch_entry_id, branch_key,
-    branch_prefix, promise_key, schedule_key, task_key,
+    PROMISE_PREFIX, SCHEDULE_PREFIX, TASK_PREFIX, TIMER_QUEUE, address_queue, branch_entry_id,
+    branch_key, branch_prefix, promise_key, schedule_key, task_key,
 };
 use crate::records::{PromiseRecord, ScheduleRecord, StoredPromise, StoredTask, TAG_BRANCH};
 use crate::timers::Timer;
@@ -93,7 +93,12 @@ impl<'a> Txn<'a> {
         if let Some(written) = self.writes.get(key) {
             return Ok(written.clone());
         }
-        Ok(self.queue.kv_get(key).await?.map(|bytes| bytes.to_vec()))
+        Ok(self
+            .queue
+            .view()
+            .kv_get(key)
+            .await?
+            .map(|bytes| bytes.to_vec()))
     }
 
     async fn get_json<T: DeserializeOwned>(&self, key: &[u8]) -> Result<Option<T>> {
@@ -154,7 +159,12 @@ impl<'a> Txn<'a> {
         let limit = self.preload_limit;
         let mut ids: Vec<String> = Vec::new();
         {
-            let mut entries = std::pin::pin!(self.queue.kv_entries(&prefix, SCAN_PAGE));
+            let mut entries = std::pin::pin!(self.queue.view().kv_entries(
+                &prefix,
+                ..,
+                KvOrder::Ascending,
+                SCAN_PAGE
+            ));
             while let Some((key, _)) = entries.try_next().await? {
                 let Some(id) = branch_entry_id(&prefix, &key) else {
                     continue;
@@ -207,7 +217,12 @@ impl<'a> Txn<'a> {
     /// Every committed entry with `prefix`, in key order.
     async fn list<T: DeserializeOwned>(&self, prefix: &[u8]) -> Result<Vec<T>> {
         let mut records = Vec::new();
-        let mut stream = std::pin::pin!(self.queue.kv_entries(prefix, SCAN_PAGE));
+        let mut stream = std::pin::pin!(self.queue.view().kv_entries(
+            prefix,
+            ..,
+            KvOrder::Ascending,
+            SCAN_PAGE
+        ));
         while let Some((_, value)) = stream.try_next().await? {
             records.push(serde_json::from_slice(&value)?);
         }
@@ -218,7 +233,7 @@ impl<'a> Txn<'a> {
     pub fn send_unblock(&mut self, address: &str, message: Value) {
         let payload = Delivery::Unblock { message };
         self.enqueues.push(EnqueueRequest {
-            queue: address.to_string(),
+            queue: address_queue(address),
             payload: serde_json::to_vec(&payload).expect("a delivery serializes"),
             options: EnqueueOptions::default(),
         });
@@ -235,7 +250,7 @@ impl<'a> Txn<'a> {
         };
         let run_at = run_at.map(|at| UNIX_EPOCH + Duration::from_millis(at.max(0) as u64));
         self.enqueues.push(EnqueueRequest {
-            queue: task.target.clone(),
+            queue: address_queue(&task.target),
             payload: serde_json::to_vec(&payload).expect("a delivery serializes"),
             options: EnqueueOptions::default().id_override(job).run_at(run_at),
         });
@@ -302,7 +317,7 @@ impl<'a> Txn<'a> {
 
     /// Whether the job `id` exists in any state.
     pub async fn job_exists(&self, id: &str) -> Result<bool> {
-        Ok(self.queue.get_job(id).await?.is_some())
+        Ok(self.queue.view().job_record(id).await?.is_some())
     }
 
     /// Acknowledge `claim` after the commit.

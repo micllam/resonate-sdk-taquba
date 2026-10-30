@@ -13,6 +13,7 @@ use tracing::{debug, warn};
 
 use crate::envelope::{Reply, Request, parse_request, response};
 use crate::kernel;
+use crate::keys::address_queue;
 use crate::store::Shared;
 
 type Subscribers = Arc<RwLock<Vec<Box<dyn Fn(String) + Send + Sync>>>>;
@@ -158,6 +159,7 @@ impl Network for TaqubaNetwork {
             let loop_ = DeliveryLoop {
                 shared: self.shared.clone(),
                 subscribers: self.subscribers.clone(),
+                queue: address_queue(&address),
                 address,
             };
             let handle =
@@ -197,15 +199,17 @@ impl Network for TaqubaNetwork {
     }
 }
 
-/// Delivers the jobs of one address: a claim loop that keeps the claim
-/// of an execute job for the task from delivery until the task's
-/// settlement, and acknowledges an unblock job once delivered. The
-/// claim's lease is the retry timeout, so a task that is not acquired
-/// in time is delivered again by the reaper's requeue.
+/// Delivers the jobs of one address: a claim loop that keeps the claim of an
+/// execute job for the task from delivery until the task's settlement, and
+/// acknowledges an unblock job once delivered. The claim's lease is the retry
+/// timeout, so a task that is not acquired in time is delivered again by the
+/// reaper's requeue. A failed claim, such as the claim after the store closes,
+/// ends the loop.
 struct DeliveryLoop {
     shared: Arc<Shared>,
     subscribers: Subscribers,
     address: String,
+    queue: String,
 }
 
 impl DeliveryLoop {
@@ -216,7 +220,7 @@ impl DeliveryLoop {
                 biased;
                 _ = stop.cancelled() => return,
                 claimed = queue.claim_with_wait(
-                    &self.address,
+                    &self.queue,
                     self.shared.retry_timeout,
                     self.shared.poll_interval,
                 ) => claimed,
@@ -225,9 +229,8 @@ impl DeliveryLoop {
                 Ok(Some(claim)) => claim,
                 Ok(None) => continue,
                 Err(e) => {
-                    warn!(address = %self.address, "delivery claim failed: {e}");
-                    tokio::time::sleep(self.shared.poll_interval).await;
-                    continue;
+                    warn!(address = %self.address, "delivery stopped: the claim failed: {e}");
+                    return;
                 }
             };
             if let Err(e) = self.deliver(claim).await {
@@ -291,5 +294,35 @@ mod tests {
         network.stop().await.unwrap();
         network.start().await.unwrap();
         network.stop().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_failed_claim_ends_the_delivery_loop() {
+        let object_store = Arc::new(InMemory::new());
+        let store = TaqubaStore::open_with_options(
+            object_store.clone(),
+            "resonate",
+            taquba::OpenOptions::default(),
+            StoreOptions::default(),
+        )
+        .await
+        .unwrap();
+        let network = store.network().group("g").build();
+        // A second writer fences the store's queue, so its claims fail.
+        let _fencer = Queue::open(object_store, "resonate").await.unwrap();
+        let delivery = DeliveryLoop {
+            shared: network.shared.clone(),
+            subscribers: network.subscribers.clone(),
+            queue: address_queue(network.anycast()),
+            address: network.anycast().to_string(),
+        };
+        // The stop token is never cancelled, so only the failed claim ends the
+        // loop.
+        tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            delivery.run(CancellationToken::new()),
+        )
+        .await
+        .expect("the delivery loop ends");
     }
 }

@@ -1,12 +1,12 @@
 # resonate-sdk-taquba
 
-Embedded network for the [Resonate Rust SDK](https://github.com/resonatehq/resonate-sdk-rs):
-durable execution on an object store. The protocol runs in the SDK's
-process over a [taquba](https://github.com/micllam/taquba) queue, and
-its state lives in a [SlateDB](https://slatedb.io) store in the
-application's own bucket. No Resonate server required. One process owns
-the store, and a crash resumes from the last committed request at the
-next open.
+Embedded network for the
+[Resonate Rust SDK](https://github.com/resonatehq/resonate/tree/main/impl/sdk/rs):
+durable execution on an object store. The protocol runs in the SDK's process
+over a [taquba](https://github.com/micllam/taquba) queue, and its state lives in
+a [SlateDB](https://slatedb.io) store in the application's own bucket. No
+Resonate server required. One process owns the store, and a crash resumes from
+the last committed request at the next open.
 
 ## Setup
 
@@ -14,7 +14,7 @@ Add the dependencies.
 
 ```toml
 [dependencies]
-resonate-sdk = { git = "https://github.com/resonatehq/resonate-sdk-rs", rev = "6545265" }
+resonate-sdk = { git = "https://github.com/resonatehq/resonate", rev = "9c72d81" }
 resonate-sdk-taquba = { git = "https://github.com/micllam/resonate-sdk-taquba" }
 ```
 

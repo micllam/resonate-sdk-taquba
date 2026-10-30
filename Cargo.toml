@@ -15,7 +15,7 @@ gcp = ["taquba/gcp"]
 azure = ["taquba/azure"]
 
 [dependencies]
-resonate-sdk = { git = "https://github.com/resonatehq/resonate-sdk-rs", rev = "6545265" }
+resonate-sdk = { git = "https://github.com/resonatehq/resonate", rev = "9c72d81" }
 taquba = "0.16"
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7"
